@@ -27,9 +27,15 @@ export async function initializeGemini() {
         console.log('Models supporting generateContent:', genAI._availableModels.join(', '));
       } else {
         console.log('Could not fetch model list via REST, status:', listResp.status);
+        // Fallback to known working models
+        console.log('Using fallback model list for this API key');
+        genAI._availableModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
       }
     } catch (err) {
       console.warn('Could not list Gemini models via REST:', err && err.message ? err.message : err);
+      // Fallback to known working models
+      console.log('Using fallback model list due to network/API error');
+      genAI._availableModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
     }
 
     return genAI;
@@ -121,14 +127,24 @@ export async function generateAnswer(query, context = []) {
       const response = await result.response;
       return response.text();
     } catch (error) {
-      console.error('Error generating answer with Gemini:', error && error.message ? error.message : error);
-      // If Gemini call fails (model not found, API mismatch, etc.), return a safe fallback.
+      const errorMsg = error && error.message ? error.message : error;
+      console.error('Error generating answer with Gemini:', errorMsg);
+      
+      // Log more details for debugging
+      if (error.status) {
+        console.error('  HTTP Status:', error.status);
+      }
+      if (error.code) {
+        console.error('  Error Code:', error.code);
+      }
+      
+      // If Gemini call fails (model not found, API mismatch, quota exceeded, etc.), return a safe fallback.
       if (Array.isArray(context) && context.length > 0) {
         const first = context[0];
         const snippet = (first.content || first.text || '').slice(0, 300);
         return `(LLM error) I couldn't generate a full answer due to an upstream API issue. I did find a relevant source: ${first.source || 'Unknown'}. Excerpt: ${snippet}${snippet.length >= 300 ? '...' : ''}`;
       }
-      return `I couldn't generate a full answer due to an upstream language model error. Please try again later or configure a valid GEMINI_API_KEY.`;
+      return `I couldn't generate a full answer due to an upstream language model error. Please try again later or verify your GEMINI_API_KEY is valid with quota remaining.`;
     }
   } catch (error) {
     console.error('Error preparing Gemini prompt:', error && error.message ? error.message : error);
