@@ -1,0 +1,33 @@
+{
+  "name": "rag-chatbot-backend",
+  "version": "1.0.0",
+  "description": "Backend for RAG Chatbot with Node.js, Express, Redis, and Google Gemini",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "seed": "node scripts/seedCorpus.js"
+  },
+  "keywords": [
+    "rag",
+    "chatbot",
+    "embeddings",
+    "vector-db",
+    "gemini",
+    "express"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-ws": "^5.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "redis": "^4.6.11",
+    "axios": "^1.6.2",
+    "@google/generative-ai": "^0.1.3"
+  },
+  "devDependencies": {}
+}
