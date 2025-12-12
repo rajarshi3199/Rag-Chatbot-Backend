@@ -105,17 +105,39 @@ npm run seed
 
 ## 🚀 Running the Server
 
-### Development Mode
+### ⭐ Recommended: Auto-Cleanup Script (Windows)
+
+**No more port conflicts!** Use this script that automatically kills any process on port 5000:
+
+```bash
+# Method 1: Double-click the file
+start-backend.bat
+
+# Method 2: From terminal
+.\start-backend.bat
+
+# Method 3: Using npm
+npm run dev:safe
+```
+
+This script will:
+- ✅ Automatically find and kill processes using port 5000
+- ✅ Wait for port to be released
+- ✅ Start the backend server fresh
+
+### Development Mode (Manual)
 ```bash
 npm run dev
 ```
 
-Server starts on `http://localhost:5000`
+**Note:** May fail with `EADDRINUSE` error if port 5000 is already in use.
 
 ### Production Mode
 ```bash
 npm start
 ```
+
+**See `QUICK-START.md` for detailed usage guide.**
 
 ---
 
