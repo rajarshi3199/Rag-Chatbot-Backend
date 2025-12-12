@@ -7,31 +7,62 @@ export async function initializeRedis() {
     const host = process.env.REDIS_HOST || '127.0.0.1';
     const port = process.env.REDIS_PORT || 6379;
     const password = process.env.REDIS_PASSWORD || undefined;
+    
+    // Check if Redis should be disabled (for deployments without Redis)
+    if (process.env.DISABLE_REDIS === 'true' || process.env.REDIS_DISABLED === 'true') {
+      console.log('⚠️  Redis disabled via environment variable');
+      return null;
+    }
 
     // Create client with a reconnect strategy so temporary down-times don't throw
     redisClient = createClient({
       url: `redis://${host}:${port}`,
       password,
       socket: {
+        // Only retry in development, not in production to avoid spam
         reconnectStrategy(retries) {
-          // exponential backoff capped at 30s
+          // In production, stop retrying after 3 attempts
+          if (process.env.NODE_ENV === 'production' && retries > 3) {
+            console.log('⚠️  Redis unavailable in production - disabling reconnection attempts');
+            return false; // Stop reconnecting
+          }
+          // In development, exponential backoff capped at 30s
           return Math.min(1000 * Math.pow(1.5, retries), 30000);
         },
+        connectTimeout: 5000, // 5 second timeout
       },
     });
 
-    redisClient.on('error', (err) => console.warn('Redis error (non-fatal):', err && err.message ? err.message : err));
+    redisClient.on('error', (err) => {
+      // Only log errors once, not repeatedly
+      const errMsg = err && err.message ? err.message : err;
+      if (!errMsg.includes('ECONNREFUSED') || process.env.NODE_ENV !== 'production') {
+        console.warn('Redis error (non-fatal):', errMsg);
+      }
+    });
     redisClient.on('connect', () => console.log('Redis connecting...'));
-    redisClient.on('ready', () => console.log('Redis ready'));
+    redisClient.on('ready', () => console.log('✓ Redis ready'));
     redisClient.on('end', () => console.log('Redis connection ended'));
 
     // Try to connect, but don't make a failed connection fatal for the server.
-    // If connect fails, the client will keep retrying according to reconnectStrategy.
     try {
       await redisClient.connect();
       return redisClient;
     } catch (err) {
-      // Log and return the client object (it will attempt reconnects).
+      // In production, if Redis is unavailable, don't keep trying
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('⚠️  Redis unavailable in production - running without session persistence');
+        if (redisClient) {
+          try {
+            await redisClient.disconnect();
+          } catch (e) {
+            // Ignore disconnect errors
+          }
+        }
+        redisClient = null;
+        return null;
+      }
+      // In development, log and return the client (it will attempt reconnects)
       console.warn('Redis initial connect failed (will retry):', err && err.message ? err.message : err);
       return redisClient;
     }
